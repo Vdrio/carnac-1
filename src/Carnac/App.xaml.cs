@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Net;
 using System.Reactive.Linq;
 using System.Windows;
 using Carnac.Logic;
@@ -28,15 +27,14 @@ namespace Carnac
 
         public App()
         {
+            var keyProvider = new KeyProvider(InterceptKeys.Current, new PasswordModeService(), new DesktopLockEventService());
             settingsProvider = new SettingsProvider(new RoamingAppDataStorage("Carnac"));
             settings = settingsProvider.GetSettings<PopupSettings>();
-            var keyProvider = new KeyProvider(InterceptKeys.Current, new PasswordModeService(), new DesktopLockEventService(), settingsProvider);
             messageProvider = new MessageProvider(new ShortcutProvider(), keyProvider, settings);
         }
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             // Check if there was instance before this. If there was-close the current one.  
             if (ProcessUtilities.ThisProcessIsAlreadyRunning())
             {

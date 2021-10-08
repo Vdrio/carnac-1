@@ -27,7 +27,10 @@ namespace Carnac.Logic.Models
 
         public int Screen { get; set; }
 
-        [NotifyProperty(AlsoNotifyFor = new[] { "ScaleTransform", "Alignment" })]
+        public double MouseClickCircleOffsetFactor { get { return _mouseClickCircleOffsetFactor > 0 ? _mouseClickCircleOffsetFactor : 1; } set { if (value > 0) { _mouseClickCircleOffsetFactor = value; } } }
+        double _mouseClickCircleOffsetFactor = 1;
+
+    [NotifyProperty(AlsoNotifyFor = new[] { "ScaleTransform", "Alignment" })]
         public NotificationPlacement Placement { get; set; }
 
         [DefaultValue(false)]
@@ -65,9 +68,6 @@ namespace Carnac.Logic.Models
         [NotifyProperty(AlsoNotifyFor = new[] { "Margins" })]
         public int RightOffset { get; set; }
 
-        [DefaultValue("")]
-        public string ProcessFilterExpression { get; set;  }
-
         public double ScaleTransform
         {
             get { return Placement == NotificationPlacement.TopLeft || Placement == NotificationPlacement.TopRight ? 1 : -1; }
@@ -92,6 +92,36 @@ namespace Carnac.Logic.Models
         public bool ShowApplicationIcon { get; set; }
         public bool SettingsConfigured { get; set; }
         public bool ShowOnlyModifiers { get; set; }
-        public bool ShowSpaceAsUnicode { get; set; }
+
+        [DefaultValue(true)]
+        public bool ShowMouseClicks { get; set; }
+
+        [DefaultValue("OrangeRed")]
+        public string LeftClickColor { get; set; }
+
+        [DefaultValue("RoyalBlue")]
+        public string RightClickColor { get; set; }
+
+        [DefaultValue(1)]
+        public double ClickStartScale { get; set; }
+
+        [DefaultValue(4)]
+        public double ClickStopScale { get; set; }
+
+        [DefaultValue(3700)]
+        public int ClickFadeDelay { get; set; }
+
+        [DefaultValue(1)]
+        public double ClickStartBorder { get; set; }
+
+        [DefaultValue(0.8)]
+        public double ClickStartOpacity { get; set; }
+
+        [DefaultValue(2)]
+        public double ClickStopBorder { get; set; }
+
+        [DefaultValue(0)]
+        public double ClickStopOpacity { get; set; }
+        public string ClickColor { get; set; }
     }
 }

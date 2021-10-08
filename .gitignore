@@ -23,4 +23,3 @@ src/Carnac.sln.ide/
 # Cake - Uncomment if you are using it
 tools/**
 !tools/packages.config
-.vs/

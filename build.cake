@@ -1,16 +1,14 @@
 #tool "nuget:?package=xunit.runners&version=1.9.2";
-#tool "nuget:?package=Squirrel.Windows&version=1.9.1";
-#tool "nuget:?package=GitVersion.CommandLine&version=5.3.6";
+#tool "nuget:?package=Squirrel.Windows";
 
-#addin "nuget:?package=Cake.FileHelpers&version=3.2.1";
-#addin "nuget:?package=Cake.Squirrel&version=0.15.1";
-#addin "nuget:?package=Newtonsoft.Json&version=12.0.3";
-using Newtonsoft.Json;
+#addin Cake.FileHelpers
+#addin Cake.Squirrel
 
 var target = Argument("target", "Default");
 var configuration = Argument("configuration", "Debug");
+var version = Argument("packageversion", "1.0.0");
 var githubRepo = Argument("githubrepo", "Code52/carnac");
-var githubAuthToken = Argument("GithubAuthToken", "");
+var githubAuthToken = Argument("authtoken", "");
 
 var githubRepoUrl = $"https://github.com/{githubRepo}";
 var solutionFile = "./src/Carnac.sln";
@@ -21,28 +19,6 @@ var zipFileHash = "";
 
 var squirrelDeployDir = deployDir + Directory("Squirrel");
 var squirrelReleaseDir = squirrelDeployDir + Directory("Releases");
-var gitHubDeployDir = deployDir + Directory("GitHub");
-GitVersion gitVersionInfo;
-string nugetVersion;
-
-Setup(context => 
-{
-	gitVersionInfo = GitVersion(new GitVersionSettings {
-		UpdateAssemblyInfo = true,
-		OutputType = GitVersionOutput.Json
-	});
-	nugetVersion = gitVersionInfo.NuGetVersion;
-
-	Information("Output from GitVersion:");
-	Information(JsonConvert.SerializeObject(gitVersionInfo, Formatting.Indented));
-
-	if (BuildSystem.IsRunningOnAppVeyor) {
-		BuildSystem.AppVeyor.UpdateBuildVersion(nugetVersion);
-	}
-
-	Information($"Building {githubRepo} v{nugetVersion}");
-	Information($"Informational version {gitVersionInfo.InformationalVersion}");
-});
 
 Task("Clean")
     .Does(() =>
@@ -80,7 +56,7 @@ Task("Package-Squirrel")
 	.IsDependentOn("Run-Unit-Tests")
 	.Does(() =>
 	{
-		var syncReleasesDir = toolsDir + Directory("squirrel.windows.1.9.1/tools");
+		var syncReleasesDir = toolsDir + Directory("squirrel.windows/tools");
 
 		EnsureDirectoryExists(deployDir);
 		EnsureDirectoryExists(squirrelDeployDir);
@@ -104,7 +80,7 @@ Task("Package-Squirrel")
 
 		var nuGetPackSettings = new NuGetPackSettings
 		{
-			Version = nugetVersion,
+			Version = version,
 			Files = releaseFiles.Select(f => new NuSpecContent { Source = f, Target = "lib/net45" + (f.Contains("Keymaps") ? "/Keymaps" : "") }).ToList(),
 			BasePath = buildDir,
 			OutputDirectory = squirrelDeployDir,
@@ -118,7 +94,7 @@ Task("Package-Squirrel")
 
 		// Create new squirrel package
 		Squirrel(
-			squirrelDeployDir + File($"carnac.{nugetVersion}.nupkg"), 
+			squirrelDeployDir + File($"carnac.{version}.nupkg"), 
 			new SquirrelSettings
 			{
 				ReleaseDirectory = squirrelReleaseDir,
@@ -135,12 +111,13 @@ Task("Package-Zip")
 	.IsDependentOn("Package-Squirrel")
 	.Does(() =>
 	{
-		var zipFile = gitHubDeployDir + File($"carnac.{nugetVersion}.zip");
+		var gitHubDeployDir = deployDir + Directory("GitHub");
+		var zipFile = gitHubDeployDir + File($"carnac.{version}.zip");
 
 		EnsureDirectoryExists(deployDir);
 		EnsureDirectoryExists(gitHubDeployDir);
 
-		var files = GetFiles($"{squirrelReleaseDir.Path}\\carnac-{nugetVersion}-*.nupkg")
+		var files = GetFiles($"{squirrelReleaseDir.Path}\\carnac-{version}-*.nupkg")
 			.Select(f => f.FullPath)
 			.Concat(
 				new []
@@ -167,14 +144,14 @@ Task("Package-Choco")
 		EnsureDirectoryExists(deployDir);
 		EnsureDirectoryExists(chocoDeployDir);
 
-		var url = $"{githubRepoUrl}/releases/download/{nugetVersion}";
+		var url = $"{githubRepoUrl}/releases/download/{version}";
 
-		ReplaceRegexInFiles(chocoInstallFile, @"\$url = '.+'", $"$url = '{url}/carnac.{nugetVersion}.zip'");
+		ReplaceRegexInFiles(chocoInstallFile, @"\$url = '.+'", $"$url = '{url}/carnac.{version}.zip'");
 		ReplaceRegexInFiles(chocoInstallFile, @"\$zipFileHash = '.+'", $"$zipFileHash = '{zipFileHash}'");
 
 		ChocolateyPack(chocoSpecPath, new ChocolateyPackSettings
 		{
-			Version = nugetVersion
+			Version = version
 		});
 		MoveFiles("./*.nupkg", chocoDeployDir);
 	});
@@ -188,28 +165,7 @@ Task("Package")
 		EnsureDirectoryExists(deployDir);
 	});
 
-Task("Create-Checksums-File")
-    .IsDependentOn("Package")
-    .Does(() =>
-    {
-        var checksumDir = deployDir + Directory("Checksums");
-        EnsureDirectoryExists(checksumDir);
-
-        var files = GetFiles($"{squirrelReleaseDir.Path}\\*")
-            .Concat(GetFiles($"{gitHubDeployDir.Path}\\*"));
-
-        var checksumFile = checksumDir + File($"sha256sums.txt");
-        var sha256sums = new List<string>();
-        foreach(var file in files)
-        {
-            var fileName = file.GetFilename();
-            var fileHash = CalculateFileHash(file, HashAlgorithm.SHA256).ToHex();
-            sha256sums.Add($"{fileHash} {fileName}");
-        }
-        FileAppendLines(checksumFile, sha256sums.ToArray());
-    });
-
 Task("Default")
-    .IsDependentOn("Create-Checksums-File");
+    .IsDependentOn("Package");
 
 RunTarget(target);

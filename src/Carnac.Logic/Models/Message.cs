@@ -14,6 +14,7 @@ namespace Carnac.Logic.Models
         readonly string processName;
         readonly ImageSource processIcon;
         readonly string shortcutName;
+        readonly bool canBeMerged;
         readonly bool isShortcut;
         readonly bool isModifier;
         readonly bool isDeleting;
@@ -30,6 +31,7 @@ namespace Carnac.Logic.Models
         {
             processName = key.Process.ProcessName;
             processIcon = key.Process.ProcessIcon;
+            canBeMerged = !key.HasModifierPressed;
             isModifier = key.HasModifierPressed;
 
             keys = new ReadOnlyCollection<KeyPress>(new[] { key });
@@ -52,6 +54,7 @@ namespace Carnac.Logic.Models
 
             this.isShortcut = isShortcut;
             this.isModifier = allKeys.Any(k => k.HasModifierPressed);
+            canBeMerged = false;
 
             this.keys = new ReadOnlyCollection<KeyPress>(allKeys);
 
@@ -65,6 +68,7 @@ namespace Carnac.Logic.Models
             : this(initial.keys.Concat(appended.keys), new KeyShortcut(initial.ShortcutName))
         {
             previous = initial;
+            canBeMerged = true;
         }
 
         private Message(Message initial, bool isDeleting)
@@ -86,6 +90,8 @@ namespace Carnac.Logic.Models
         public ImageSource ProcessIcon { get { return processIcon; } }
 
         public string ShortcutName { get { return shortcutName; } }
+
+        public bool CanBeMerged { get { return canBeMerged; } }
 
         public bool IsShortcut { get { return isShortcut; } }
 
@@ -118,12 +124,6 @@ namespace Carnac.Logic.Models
             {
                 return previousMessage.Replace(newMessage);
             }
-            // if current is modifier and previous is a mouse action ignore modifierkeypress
-            if (previousMessage.keys != null && KeyProvider.IsModifierKeyPress(newMessage.keys[0].InterceptKeyEventArgs)
-                && InterceptMouse.MouseKeys.Contains(previousMessage.keys[0].Key))
-            {
-                return previousMessage.Replace(previousMessage);
-            }
 
             if (ShouldCreateNewMessage(previousMessage, newMessage))
             {
@@ -139,11 +139,12 @@ namespace Carnac.Logic.Models
                    KeyProvider.IsModifierKeyPress(current.keys[0].InterceptKeyEventArgs) ||
                    // accumulate also same modifier shortcuts
                    (previous.keys[0].HasModifierPressed && !previous.keys[0].Input.SequenceEqual(current.keys[0].Input)) ||
+                   !previous.CanBeMerged ||
+                   !current.CanBeMerged ||
                    // new message for different mouse keys;
                    ((InterceptMouse.MouseKeys.Contains(current.keys[0].Key) ||
                    (previous.keys != null && InterceptMouse.MouseKeys.Contains(previous.keys[0].Key)))
                    && !previous.keys[0].Input.SequenceEqual(current.keys[0].Input));
-
         }
 
         public Message FadeOut()

@@ -10,6 +10,8 @@ using Carnac.Logic.KeyMonitor;
 using Carnac.Logic.Models;
 using Microsoft.Win32;
 using System.Windows.Media;
+using SettingsProviderNet;
+using System.Text.RegularExpressions;
 using Carnac.Logic.MouseMonitor;
 
 
@@ -18,9 +20,10 @@ namespace Carnac.Logic
     public class KeyProvider : IKeyProvider
     {
         readonly IInterceptKeys interceptKeysSource;
-        readonly Dictionary<int, Process> processes;
         readonly IPasswordModeService passwordModeService;
         readonly IDesktopLockEventService desktopLockEventService;
+        readonly PopupSettings settings;
+        string currentFilter = null;
 
         private static readonly IList<Keys> modifierKeys =
             new List<Keys>
@@ -40,18 +43,45 @@ namespace Carnac.Logic
 
         private bool winKeyPressed;
 
-        [DllImport("User32.dll")]
-        private static extern int GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        public KeyProvider(IInterceptKeys interceptKeysSource, IPasswordModeService passwordModeService, IDesktopLockEventService desktopLockEventService)
+        public KeyProvider(IInterceptKeys interceptKeysSource, IPasswordModeService passwordModeService, IDesktopLockEventService desktopLockEventService, ISettingsProvider settingsProvider)
         {
-            processes = new Dictionary<int, Process>();
+            if (settingsProvider == null)
+            {
+                throw new ArgumentNullException(nameof(settingsProvider));
+            }
+
             this.interceptKeysSource = interceptKeysSource;
             this.passwordModeService = passwordModeService;
             this.desktopLockEventService = desktopLockEventService;
+
+            settings = settingsProvider.GetSettings<PopupSettings>();
+        }
+
+        private bool ShouldFilterProcess(out Regex filterRegex)
+        {
+            filterRegex = null;
+            if (settings?.ProcessFilterExpression != currentFilter)
+            {
+                currentFilter = settings?.ProcessFilterExpression;
+
+                if (!string.IsNullOrEmpty(currentFilter))
+                {
+                    try
+                    {
+                        filterRegex = new Regex(currentFilter, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+                    }
+                    catch
+                    {
+                        filterRegex = null;
+                    }
+                }
+                else
+                {
+                    filterRegex = null;
+                }
+            }
+
+            return (filterRegex != null);
         }
 
         public IObservable<KeyPress> GetKeyStream()
@@ -103,8 +133,25 @@ namespace Carnac.Logic
 
         KeyPress ToCarnacKeyPress(InterceptKeyEventArgs interceptKeyEventArgs)
         {
-            var process = GetAssociatedProcess();
+            var process = AssociatedProcessUtilities.GetAssociatedProcess();
             if (process == null)
+            {
+                return null;
+            }
+
+            // see if this process is one being filtered for
+            Regex filterRegex;
+            if (ShouldFilterProcess(out filterRegex) && !filterRegex.IsMatch(process.ProcessName))
+            {
+                return null;
+            }
+
+            if (!settings.ShowMouseClickKeys && (interceptKeyEventArgs.Key == Keys.LButton || interceptKeyEventArgs.Key == Keys.MButton || interceptKeyEventArgs.Key == Keys.RButton || interceptKeyEventArgs.Key == Keys.XButton1 || interceptKeyEventArgs.Key == Keys.XButton2))
+            {
+                return null;
+            }
+
+            if (!settings.ShowMouseScrollKeys && (interceptKeyEventArgs.Key == Keys.VolumeUp || interceptKeyEventArgs.Key == Keys.VolumeDown))
             {
                 return null;
             }
@@ -128,7 +175,6 @@ namespace Carnac.Logic
             var controlPressed = interceptKeyEventArgs.ControlPressed;
             var altPressed = interceptKeyEventArgs.AltPressed;
             var shiftPressed = interceptKeyEventArgs.ShiftPressed;
-            var mouseAction = InterceptMouse.MouseKeys.Contains(interceptKeyEventArgs.Key);
 
             if (IsModifierKeyPress(interceptKeyEventArgs))
             {
@@ -138,6 +184,7 @@ namespace Carnac.Logic
                 isWinKeyPressed = false;
             }
 
+            var mouseAction = InterceptMouse.MouseKeys.Contains(interceptKeyEventArgs.Key);
             if (controlPressed)
                 yield return "Ctrl";
             if (altPressed)
@@ -156,29 +203,6 @@ namespace Carnac.Logic
             else
             {
                 yield return interceptKeyEventArgs.Key.Sanitise();
-            }
-        }
-
-        Process GetAssociatedProcess()
-        {
-            var handle = GetForegroundWindow();
-
-            if (processes.ContainsKey(handle))
-            {
-                return processes[handle];
-            }
-
-            uint processId;
-            GetWindowThreadProcessId(new IntPtr(handle), out processId);
-            try
-            {
-                var p = Process.GetProcessById(Convert.ToInt32(processId));
-                processes.Add(handle, p);
-                return p;
-            }
-            catch (ArgumentException)
-            {
-                return null;
             }
         }
     }

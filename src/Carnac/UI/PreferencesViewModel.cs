@@ -44,6 +44,12 @@ namespace Carnac.UI
                     LeftClickColor = availableColor;
                 if (Settings.RightClickColor == name)
                     RightClickColor = availableColor;
+                if (Settings.ScrollClickColor == name)
+                    ScrollClickColor = availableColor;
+                if (Settings.XButton1ClickColor == name)
+                    XButton1ClickColor = availableColor;
+                if (Settings.XButton2ClickColor == name)
+                    XButton2ClickColor = availableColor;
 
                 AvailableColors.Add(availableColor);
             }
@@ -55,6 +61,18 @@ namespace Carnac.UI
             if (RightClickColor == null)
             {
                 RightClickColor = new AvailableColor("RoyalBlue", Colors.RoyalBlue);
+            }
+            if (ScrollClickColor == null)
+            {
+                ScrollClickColor = new AvailableColor("Gold", Colors.Gold);
+            }
+            if (XButton1ClickColor == null)
+            {
+                XButton1ClickColor = new AvailableColor("Peru", Colors.Peru);
+            }
+            if (XButton2ClickColor == null)
+            {
+                XButton2ClickColor = new AvailableColor("Plum", Colors.Plum);
             }
 
 
@@ -73,9 +91,8 @@ namespace Carnac.UI
 
         public ObservableCollection<DetailedScreen> Screens { get; set; }
 
-        public DetailedScreen SelectedScreen { get { return _selectedScreen; } set { _selectedScreen = value; Settings.MouseClickCircleOffsetFactor = (1 + Screens.FirstOrDefault(x => x.Index == 1).Width / Screens.FirstOrDefault(x => x.Index == value.Index).Width) / 2; } }
+        public DetailedScreen SelectedScreen { get { return _selectedScreen; } set { _selectedScreen = value; Settings.MouseClickCircleOffsetFactor = (1 + Screens.FirstOrDefault(x=>x.Index == 1).Width / Screens.FirstOrDefault(x => x.Index == value.Index).Width) / 2; } }
         DetailedScreen _selectedScreen;
-
         public PopupSettings Settings { get; set; }
 
         public string Version
@@ -123,6 +140,12 @@ namespace Carnac.UI
 
         public AvailableColor RightClickColor { get; set; }
 
+        public AvailableColor ScrollClickColor { get; set; }
+
+        public AvailableColor XButton1ClickColor { get; set; }
+
+        public AvailableColor XButton2ClickColor { get; set; }
+
         void Visit()
         {
             try
@@ -163,6 +186,9 @@ namespace Carnac.UI
             Settings.ItemBackgroundColor = ItemBackgroundColor.Name;
             Settings.LeftClickColor = LeftClickColor.Name;
             Settings.RightClickColor = RightClickColor.Name;
+            Settings.ScrollClickColor = ScrollClickColor.Name;
+            Settings.XButton1ClickColor = XButton1ClickColor.Name;
+            Settings.XButton2ClickColor = XButton2ClickColor.Name;
             settingsProvider.SaveSettings(Settings);
         }
 

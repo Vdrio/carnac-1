@@ -95,6 +95,7 @@
     <Compile Include="KeyMonitor\KeyDirection.cs" />
     <Compile Include="KeysController.cs" />
     <Compile Include="Models\Processinfo.cs" />
+    <Compile Include="AssociatedProcessUtilities.cs" />
     <Compile Include="MouseMonitor\InterceptMouse.cs" />
     <Compile Include="ShortcutAccumulator.cs" />
     <Compile Include="KeyPressDefinition.cs" />
@@ -127,6 +128,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="IconUtilities.cs" />
+    <Content Include="Keymaps\chrome.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="Keymaps\ncrunch.yml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -151,7 +155,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Fody.1.29.4\build\portable-net+sl+win+wpa+wp\Fody.targets'))" />
   </Target>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>

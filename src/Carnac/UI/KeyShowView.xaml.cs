@@ -9,10 +9,10 @@ using Gma.System.MouseKeyHook;
 
 namespace Carnac.UI
 {
-    public partial class KeyShowView
+    public partial class KeyShowView: IDisposable
     {
         private Storyboard sb;
-        readonly IKeyboardMouseEvents m_GlobalHook = Hook.GlobalEvents();
+        IKeyboardMouseEvents m_GlobalHook = null;
 
         public KeyShowView(KeyShowViewModel keyShowViewModel)
         {
@@ -46,6 +46,14 @@ namespace Carnac.UI
             if (vm.Settings.ShowMouseClicks)
             {
                 SetupMouseEvents();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (m_GlobalHook != null)
+            {
+                m_GlobalHook.Dispose();
             }
         }
 
@@ -130,14 +138,24 @@ namespace Carnac.UI
 
         void SetupMouseEvents()
         {
+            if (m_GlobalHook == null)
+            {
+                m_GlobalHook = Hook.GlobalEvents();
+            }
             m_GlobalHook.MouseDown += OnMouseDown;
             m_GlobalHook.MouseMove += OnMouseMove;
         }
 
         void DestroyMouseEvents()
         {
+            if (m_GlobalHook == null)
+            {
+                return;
+            }
             m_GlobalHook.MouseDown -= OnMouseDown;
             m_GlobalHook.MouseMove -= OnMouseMove;
+            m_GlobalHook.Dispose();
+            m_GlobalHook = null;
         }
 
         private void OnMouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -148,6 +166,19 @@ namespace Carnac.UI
             {
                 vm.Settings.ClickColor = vm.Settings.RightClickColor;
             }
+            else if (e.Button == System.Windows.Forms.MouseButtons.Middle)
+            {
+                vm.Settings.ClickColor = vm.Settings.ScrollClickColor;
+            }
+            else if (e.Button == System.Windows.Forms.MouseButtons.XButton1)
+            {
+                vm.Settings.ClickColor = vm.Settings.XButton1ClickColor;
+            }
+            else if (e.Button == System.Windows.Forms.MouseButtons.XButton2)
+            {
+                vm.Settings.ClickColor = vm.Settings.XButton2ClickColor;
+            }
+
             sb.Begin();
         }
 
@@ -157,5 +188,5 @@ namespace Carnac.UI
             var pos = PointFromScreen(new Point(e.X, e.Y));
             vm.CursorPosition = new Point(pos.X * vm.Settings.MouseClickCircleOffsetFactor, pos.Y * vm.Settings.MouseClickCircleOffsetFactor);
         }
-    }
+  }
 }
